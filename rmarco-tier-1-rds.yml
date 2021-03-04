@@ -54,6 +54,7 @@ Resources:
   MasterDbCredentials:
     Type: AWS::SecretsManager::Secret
     Properties:
+      Name: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "master-db" ] ]
       GenerateSecretString:
         SecretStringTemplate: '{"username": "admin"}'
         GenerateStringKey: 'password'
