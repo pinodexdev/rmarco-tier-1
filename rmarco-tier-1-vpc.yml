@@ -1,0 +1,286 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Apper DevOps Engineer Technical Challenge - Raphael Marco - Tier 1 - VPC"
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: "rmarco-tier-1"
+
+  Environment:
+    Type: String
+    Default: "dev"
+
+  VpcCidrBlock:
+    Type: String
+    Default: "10.99.0.0/16"
+
+  VpcSubnetDatabase1CidrBlock:
+    Type: String
+    Default: "10.99.1.0/24"
+
+  VpcSubnetDatabase2CidrBlock:
+    Type: String
+    Default: "10.99.2.0/24"
+
+  VpcSubnetPrivate1CidrBlock:
+    Type: String
+    Default: "10.99.3.0/24"
+
+  VpcSubnetPrivate2CidrBlock:
+    Type: String
+    Default: "10.99.4.0/24"
+
+  VpcSubnetPublic1CidrBlock:
+    Type: String
+    Default: "10.99.5.0/24"
+
+Resources:
+  # Main VPC
+  Vpc:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsHostnames: True
+      EnableDnsSupport: True
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "vpc" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  VpcInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "ig" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  VpcToVpcInternetGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref VpcInternetGateway
+
+  # Start database subnet
+
+  # Database subnet in first region availability zone
+  VpcSubnetDatabase1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetDatabase1CidrBlock
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: False
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "database-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Database subnet in second region availability zone
+  VpcSubnetDatabase2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetDatabase2CidrBlock
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: False
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "database-2" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # End database subnet
+
+  # Start private subnet
+
+  # Private subnet in first region availability zone
+  VpcSubnetPrivate1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetPrivate1CidrBlock
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: False
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "private-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Private subnet in second region availability zone
+  VpcSubnetPrivate2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetPrivate2CidrBlock
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: False
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "private-2" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route table for private subnets
+  VpcRouteTablePrivate:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "private" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  VpcSubnetPrivate1RouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref VpcSubnetPrivate1
+      RouteTableId: !Ref VpcRouteTablePrivate
+
+  VpcSubnetPrivate2RouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref VpcSubnetPrivate2
+      RouteTableId: !Ref VpcRouteTablePrivate
+
+  # End private subnet
+
+  # Start public subnet
+
+  # Public subnet in first region availability zone
+  VpcSubnetPublic1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetPublic1CidrBlock
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route table for public subnets
+  VpcRouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  VpcSubnetPublic1ToVpcRouteTablePublic:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref VpcSubnetPublic1
+      RouteTableId: !Ref VpcRouteTablePublic
+
+  VpcRouteTablePublicToVpcInternetGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VpcRouteTablePublic
+      GatewayId: !Ref VpcInternetGateway
+      DestinationCidrBlock: "0.0.0.0/0"
+
+  EipPublic1:
+   Type: AWS::EC2::EIP
+   Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  NatGatewayPublic1:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      SubnetId: !Ref VpcSubnetPublic1
+      AllocationId:
+         Fn::GetAtt:
+          - EipPublic1
+          - AllocationId
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # End public subnet
+
+  # Route private subnet egress to public nat gateway 1
+
+  VpcRouteTablePrivateToNatGatewayPublic1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref VpcRouteTablePrivate
+      NatGatewayId: !Ref NatGatewayPublic1
+      DestinationCidrBlock: "0.0.0.0/0"
+
+  # End eoute private subnet egress to public nat gateway 1
+
+Outputs:
+  VpcId:
+    Description: "Tier 1 VPC"
+    Value: !Ref Vpc
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcId" ] ]
+
+  VpcSubnetDatabase1Id:
+    Description: "Tier 1 database subnet in first region availability zone"
+    Value: !Ref VpcSubnetDatabase1
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetDatabase1Id" ] ]
+
+  VpcSubnetDatabase2Id:
+    Description: "Tier 1 database subnet in second region availability zone"
+    Value: !Ref VpcSubnetDatabase2
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetDatabase2Id" ] ]
+
+  VpcSubnetPrivate1Id:
+    Description: "Tier 1 private subnet in first region availability zone"
+    Value: !Ref VpcSubnetPrivate1
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetPrivate1Id" ] ]
+
+  VpcSubnetPrivate2Id:
+    Description: "Tier 1 private subnet in second region availability zone"
+    Value: !Ref VpcSubnetPrivate2
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetPrivate2Id" ] ]
+
+  VpcSubnetPublic1Id:
+    Description: "Tier 1 public subnet in first region availability zone"
+    Value: !Ref VpcSubnetPublic1
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetPublic1Id" ] ]
