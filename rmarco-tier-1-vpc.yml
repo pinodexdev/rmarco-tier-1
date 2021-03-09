@@ -34,6 +34,10 @@ Parameters:
     Type: String
     Default: "10.99.5.0/24"
 
+  VpcSubnetPublic2CidrBlock:
+    Type: String
+    Default: "10.99.6.0/24"
+
 Resources:
   # Main VPC
   Vpc:
@@ -182,6 +186,22 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
 
+  # Public subnet in the second region availability zone
+  VpcSubnetPublic2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcSubnetPublic2CidrBlock
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      MapPublicIpOnLaunch: True
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-2" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
   # Route table for public subnets
   VpcRouteTablePublic:
     Type: AWS::EC2::RouteTable
@@ -199,6 +219,12 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref VpcSubnetPublic1
+      RouteTableId: !Ref VpcRouteTablePublic
+
+  VpcSubnetPublic2ToVpcRouteTablePublic:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref VpcSubnetPublic2
       RouteTableId: !Ref VpcRouteTablePublic
 
   VpcRouteTablePublicToVpcInternetGateway:
@@ -223,13 +249,34 @@ Resources:
    Type: AWS::EC2::NatGateway
    Properties:
       SubnetId: !Ref VpcSubnetPublic1
-      AllocationId:
-         Fn::GetAtt:
-          - EipPublic1
-          - AllocationId
+      AllocationId: !GetAtt EipPublic1.AllocationId
       Tags:
         - Key: Name
           Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-1" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  EipPublic2:
+   Type: AWS::EC2::EIP
+   Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-2" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  NatGatewayPublic2:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      SubnetId: !Ref VpcSubnetPublic2
+      AllocationId: !GetAtt EipPublic2.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "public-2" ] ]
         - Key: Project
           Value: !Ref ProjectName
         - Key: Environment
@@ -284,3 +331,9 @@ Outputs:
     Value: !Ref VpcSubnetPublic1
     Export:
       Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetPublic1Id" ] ]
+
+  VpcSubnetPublic2Id:
+    Description: "Tier 1 public subnet in second region availability zone"
+    Value: !Ref VpcSubnetPublic2
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcSubnetPublic2Id" ] ]

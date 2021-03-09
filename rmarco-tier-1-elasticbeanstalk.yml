@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Apper DevOps Engineer Technical Challenge - Raphael Marco - Tier 1 - Elastic Beanstalk"
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: "raphael-marco-tier-1"
+
+  Environment:
+    Type: String
+    Default: "dev"
+
+  VpcStackName:
+    Type: String
+
+  RdsStackName:
+    Type: String
+
+Resources:
+  ExpressMinApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp" ] ]
+      Description: "Raphael Marco - Tier 1 - Elastic Beanstalk"
+
+  ExpressMinAppEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref ExpressMinApp
+      Description: "Raphael Marco - Tier 1 - Elastic Beanstalk Environment"
+      TemplateName: !Ref ExpressMinAppTemplate
+      Tier:
+        Name: WebServer
+        Type: Standard
+
+  ExpressMinAppTemplate:
+    Type: AWS::ElasticBeanstalk::ConfigurationTemplate
+    Properties:
+      ApplicationName: !Ref ExpressMinApp
+      Description: "Raphael Marco - Tier 1 - Elastic Beanstalk Configuration Template"
+      SolutionStackName: "64bit Amazon Linux 2 v5.3.0 running Node.js 14"
+      OptionSettings:
+        - Namespace: aws:autoscaling:launchconfiguration
+          OptionName: IamInstanceProfile
+          Value: !Ref ExpressMinAppInstanceProfile
+        - Namespace: aws:autoscaling:asg
+          OptionName: MinSize
+          Value: '2'
+        - Namespace: aws:autoscaling:asg
+          OptionName: MaxSize
+          Value: '6'
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: EnvironmentType
+          Value: LoadBalanced
+        - Namespace: aws:elasticbeanstalk:environment
+          OptionName: LoadBalancerType
+          Value: application
+        - Namespace: aws:ec2:vpc
+          OptionName: Subnets
+          Value: !Join [ ",", [
+            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPrivate1Id",
+            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPrivate2Id"
+          ] ]
+        - Namespace: aws:ec2:vpc
+          OptionName: ELBSubnets
+          Value: !Join [ ",", [
+            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPublic1Id",
+            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPublic2Id"
+          ] ]
+
+  ExpressMinAppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Description: "Raphael Marco - Tier 1 - Elastic Beanstalk Instance Role"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWorkerTier
+
+  ExpressMinAppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref ExpressMinAppInstanceRole
+
+  ExpressMinAppPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-eb" ] ]
+      Description: "Used to allow access to express-minapp application"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "elasticbeanstalk:*"
+            Resource:
+              - !Sub "arn:aws:elasticbeanstalk:${AWS::Region}:${AWS::AccountId}:application/${ExpressMinApp}"
+              - !Sub "arn:aws:elasticbeanstalk:${AWS::Region}:${AWS::AccountId}:applicationversion/${ExpressMinApp}/*"
+              - !Sub "arn:aws:elasticbeanstalk:${AWS::Region}:${AWS::AccountId}:environment/${ExpressMinApp}/*"
+
+Outputs:
+  ExpressMinAppName:
+    Description: "Elastic Beanstalk application name"
+    Value: !Ref ExpressMinApp
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ExpressMinAppName" ] ]
+
+  ExpressMinAppEnvironmentName:
+    Description: "Elastic Beanstalk environment name"
+    Value: !Ref ExpressMinAppEnvironment
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ExpressMinAppEnvironmentName" ] ]
+
+  ExpressMinAppPolicyArn:
+    Description: "Elastic Beanstalk application policy ARN"
+    Value: !Ref ExpressMinAppPolicy
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ExpressMinAppPolicyArn" ] ]

@@ -111,3 +111,10 @@ Resources:
           Value: !Ref ProjectName
         - Key: Environment
           Value: !Ref Environment
+
+Outputs:
+  MasterDbAddress:
+    Description: "Master DB Address"
+    Value: !GetAtt MasterDb.Endpoint.Address
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "MasterDbAddress" ] ]

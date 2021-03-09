@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Apper DevOps Engineer Technical Challenge - Raphael Marco - Tier 1 - CI/CD"
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: "raphael-marco-tier-1"
+
+  Environment:
+    Type: String
+    Default: "dev"
+
+  ElasticBeanstalkStackName:
+    Type: String
+
+Resources:
+  # Start artifacts s3 bucket
+
+  ExpressMinAppPipelineArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-artifacts" ] ]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: True
+        BlockPublicPolicy: True
+        IgnorePublicAcls: True
+        RestrictPublicBuckets: True
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-artifacts" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  ExpressMinAppPipelineArtifactBucketPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-artifacts" ] ]
+      Description: "Used to allow read and write access to artifacts S3 bucket for express-minapp."
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "s3:ListBucket"
+            Resource: !GetAtt ExpressMinAppPipelineArtifactBucket.Arn
+          - Effect: Allow
+            Action: "s3:*"
+            Resource: !Join [ "/", [ !GetAtt ExpressMinAppPipelineArtifactBucket.Arn, "*" ] ]
+
+  # End artifacts s3 bucket
+
+  # Start github connection
+
+  ExpressMinAppGithub:
+    Type: AWS::CodeStarConnections::Connection
+    Properties:
+      ConnectionName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "github" ] ]
+      ProviderType: "GitHub"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "github" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  ExpressMinAppGithubPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "github-connection" ] ]
+      Description: "Used to allow usage of the GitHub connection"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "codestar-connections:UseConnection"
+            Resource: !Ref ExpressMinAppGithub
+
+  # End github connection
+
+  # Start codepipeline roles
+
+  ExpressMinAppPipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-cicd" ] ]
+      Description: "Service role for express-minapp Codepipeline"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+                - cloudformation.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkRoleCore"
+        - !Ref ExpressMinAppPipelineArtifactBucketPolicy
+        - !Ref ExpressMinAppGithubPolicy
+        - Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppPolicyArn"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-cicd" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # End codepipeline roles
+
+  # Start codepipelinie
+
+  ExpressMinAppPipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp" ] ]
+      RoleArn: !GetAtt ExpressMinAppPipelineServiceRole.Arn
+      ArtifactStore:
+        Type: "S3"
+        Location: !Ref ExpressMinAppPipelineArtifactBucket
+      Stages:
+        - Name: "Source"
+          Actions:
+            - Name: "Source"
+              ActionTypeId:
+                Version: "1"
+                Category: "Source"
+                Owner: "AWS"
+                Provider: "CodeStarSourceConnection"
+              Configuration:
+                ConnectionArn: !Ref ExpressMinAppGithub
+                FullRepositoryId: "pinodex/apper-tier-1-express-minapp"
+                BranchName: !Ref Environment
+                OutputArtifactFormat: "CODE_ZIP"
+              OutputArtifacts:
+                - Name: "SourceArtifact"
+
+        - Name: "Deploy"
+          Actions:
+            - Name: "Deploy"
+              ActionTypeId:
+                Version: "1"
+                Category: "Deploy"
+                Owner: "AWS"
+                Provider: "ElasticBeanstalk"
+              Configuration:
+                ApplicationName:
+                  Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppName"
+                EnvironmentName:
+                  Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppEnvironmentName"
+              InputArtifacts:
+                - Name: "SourceArtifact"
+      Tags:
+        - Key: Name
+          Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp" ] ]
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # End codepipeline
