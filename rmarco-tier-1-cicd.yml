@@ -100,7 +100,8 @@ Resources:
         - "arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkRoleCore"
         - !Ref ExpressMinAppPipelineArtifactBucketPolicy
         - !Ref ExpressMinAppGithubPolicy
-        - Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppPolicyArn"
+        - Fn::ImportValue:
+            !Sub "${ElasticBeanstalkStackName}-ExpressMinAppPolicyArn"
       Tags:
         - Key: Name
           Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "express-minapp-cicd" ] ]
@@ -148,9 +149,11 @@ Resources:
                 Provider: "ElasticBeanstalk"
               Configuration:
                 ApplicationName:
-                  Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppName"
+                  Fn::ImportValue:
+                    !Sub "${ElasticBeanstalkStackName}-ExpressMinAppName"
                 EnvironmentName:
-                  Fn::ImportValue: !Sub "${ElasticBeanstalkStackName}-ExpressMinAppEnvironmentName"
+                  Fn::ImportValue:
+                    !Sub "${ElasticBeanstalkStackName}-ExpressMinAppEnvironmentName"
               InputArtifacts:
                 - Name: "SourceArtifact"
       Tags:

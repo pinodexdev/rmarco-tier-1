@@ -25,3 +25,11 @@ Each resources must have the following tags:
 * **Environment** - environment name that the resource belongs to
 
 Tag values must also follow the naming convention specified above.
+
+## Stack Creation Order
+
+1. [rmarco-tier-1-vpc.yml](rmarco-tier-1-vpc.yml)
+2. [rmarco-tier-1-rds.yml](rmarco-tier-1-rds.yml)
+3. [rmarco-tier-1-elasticbeanstalk.yml](rmarco-tier-1-elasticbeanstalk.yml)
+4. [rmarco-tier-1-cicd.yml](rmarco-tier-1-cicd.yml)
+5. [rmarco-tier-1-cloudfront.yml](rmarco-tier-1-cloudfront.yml)

@@ -29,6 +29,7 @@ Resources:
       DBInstanceIdentifier: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "master" ] ]
       MasterUsername: !Sub '{{resolve:secretsmanager:${MasterDbCredentials}::username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${MasterDbCredentials}::password}}'
+      DBName: master
 
       DBSubnetGroupName: !Ref MasterDbSubnetGroup
       PubliclyAccessible: False
@@ -102,8 +103,14 @@ Resources:
       GroupDescription: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "master" ] ]
       # SecurityGroupEgress:
       #   - Egress
-      # SecurityGroupIngress:
-      #   - Ingress
+      SecurityGroupIngress:
+        - Description: "Allow MySQL port from vpc subnet"
+          CidrIp:
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-VpcCidrBlock"
+          IpProtocol: "tcp"
+          FromPort: 3306
+          ToPort: 3306
       Tags:
         - Key: Name
           Value: !Join [ "-", [ !Ref ProjectName, !Ref Environment, "master" ] ]
@@ -118,3 +125,9 @@ Outputs:
     Value: !GetAtt MasterDb.Endpoint.Address
     Export:
       Name: !Join [ "-", [ !Ref "AWS::StackName", "MasterDbAddress" ] ]
+
+  MasterDbCredentials:
+    Description: "Master DB Credentials"
+    Value: !Ref MasterDbCredentials
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "MasterDbCredentials" ] ]

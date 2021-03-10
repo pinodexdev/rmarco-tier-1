@@ -302,6 +302,12 @@ Outputs:
     Export:
       Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcId" ] ]
 
+  VpcCidrBlock:
+    Description: "Tier 1 VPC Cidr Block"
+    Value: !Ref VpcCidrBlock
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "VpcCidrBlock" ] ]
+
   VpcSubnetDatabase1Id:
     Description: "Tier 1 database subnet in first region availability zone"
     Value: !Ref VpcSubnetDatabase1

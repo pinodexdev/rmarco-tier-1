@@ -55,17 +55,35 @@ Resources:
         - Namespace: aws:elasticbeanstalk:environment
           OptionName: LoadBalancerType
           Value: application
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: "HOST"
+          Value:
+            Fn::ImportValue:
+              !Sub "${RdsStackName}-MasterDbAddress"
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: "USERNAME"
+          Value: !Join [ "", [ "{{resolve:secretsmanager:", Fn::ImportValue: !Sub "${RdsStackName}-MasterDbCredentials", "::username}}" ] ]
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: "PASSWORD"
+          Value: !Join [ "", [ "{{resolve:secretsmanager:", Fn::ImportValue: !Sub "${RdsStackName}-MasterDbCredentials", "::password}}" ] ]
+        - Namespace: aws:elasticbeanstalk:application:environment
+          OptionName: "DATABASE"
+          Value: "master"
         - Namespace: aws:ec2:vpc
           OptionName: Subnets
           Value: !Join [ ",", [
-            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPrivate1Id",
-            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPrivate2Id"
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-VpcSubnetPrivate1Id",
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-VpcSubnetPrivate2Id"
           ] ]
         - Namespace: aws:ec2:vpc
           OptionName: ELBSubnets
           Value: !Join [ ",", [
-            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPublic1Id",
-            Fn::ImportValue: !Sub "${VpcStackName}-VpcSubnetPublic2Id"
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-VpcSubnetPublic1Id",
+            Fn::ImportValue:
+              !Sub "${VpcStackName}-VpcSubnetPublic2Id"
           ] ]
 
   ExpressMinAppInstanceRole:
@@ -125,3 +143,9 @@ Outputs:
     Value: !Ref ExpressMinAppPolicy
     Export:
       Name: !Join [ "-", [ !Ref "AWS::StackName", "ExpressMinAppPolicyArn" ] ]
+
+  ExpressMinAppEndpoint:
+    Description: "Elastic Beanstalk endpoint"
+    Value: !GetAtt ExpressMinAppEnvironment.EndpointURL
+    Export:
+      Name: !Join [ "-", [ !Ref "AWS::StackName", "ExpressMinAppEndpoint" ] ]
